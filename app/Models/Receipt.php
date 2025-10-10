@@ -20,6 +20,12 @@ class Receipt extends Model
     public function calculateSubtotal()
     {
         $subtotal = 0;
+        
+        // Items relationship'i yüklenmiş mi kontrol et
+        if (!$this->relationLoaded('items')) {
+            $this->load('items');
+        }
+        
         foreach ($this->items as $item) {
             $subtotal += $item->quantity * $item->price;
         }
