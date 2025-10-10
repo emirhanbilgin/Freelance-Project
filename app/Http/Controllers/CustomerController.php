@@ -23,7 +23,7 @@ class CustomerController extends Controller
     public function receipts($id)
     {
         $customer = Customer::with(['receipts' => function($query) {
-            $query->orderBy('created_at', 'desc');
+            $query->with('items')->orderBy('created_at', 'desc');
         }])->findOrFail($id);
         
         return view('customers.receipts', compact('customer'));

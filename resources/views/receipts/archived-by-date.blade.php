@@ -56,7 +56,7 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm font-medium text-gray-500">Toplam Tutar</p>
-                        <p class="text-lg font-semibold text-gray-900">{{ number_format($receipts->sum('total_amount'), 2) }} ₺</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ number_format($receipts->sum(function($receipt) { return $receipt->calculateTotalAmount(); }), 2) }} ₺</p>
                     </div>
                 </div>
             </div>

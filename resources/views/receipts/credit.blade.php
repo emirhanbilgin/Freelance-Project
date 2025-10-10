@@ -43,7 +43,7 @@
                     </div>
                     <div class="ml-3">
                         <p class="text-sm font-medium text-gray-500">Toplam Tutar</p>
-                        <p class="text-lg font-semibold text-gray-900">{{ number_format($creditReceipts->sum('total_amount'), 2) }} ₺</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ number_format($creditReceipts->sum(function($receipt) { return $receipt->calculateTotalAmount(); }), 2) }} ₺</p>
                     </div>
                 </div>
             </div>
@@ -115,7 +115,7 @@
                                         {{ $receipt->created_at->format('d.m.Y H:i') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-primary-600">
-                                        {{ number_format($receipt->total_amount, 2) }} ₺
+                                        {{ number_format($receipt->calculateTotalAmount(), 2) }} ₺
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">

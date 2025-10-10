@@ -99,12 +99,8 @@
     </tr>
     </thead>
     <tbody>
-    @php $total = 0; @endphp
     @foreach ($receipt->items as $item)
-        @php
-            $subtotal = $item->price * $item->quantity;
-            $total += $subtotal;
-        @endphp
+        @php $subtotal = $item->price * $item->quantity; @endphp
         <tr>
             <td>{{ $item->product->name }}</td>
             <td>{{ $item->quantity }}</td>
@@ -113,20 +109,35 @@
             <td>{{ $item->note ?? '-' }}</td>
         </tr>
     @endforeach
-    <tr class="total-row">
-        <td colspan="3" style="text-align:right;"><strong>TOPLAM:</strong></td>
-        <td colspan="2"><strong>{{ number_format($total, 2, ',', '.') }} ₺</strong></td>
-    </tr>
+    @if($receipt->payment_method === 'credit_card')
+        <tr>
+            <td colspan="3" style="text-align:right;">Ara Toplam:</td>
+            <td colspan="2">{{ number_format($receipt->calculateSubtotal(), 2, ',', '.') }} ₺</td>
+        </tr>
+        <tr>
+            <td colspan="3" style="text-align:right;">Kredi Kartı Komisyonu (%1):</td>
+            <td colspan="2">+{{ number_format($receipt->calculateCommission(), 2, ',', '.') }} ₺</td>
+        </tr>
+        <tr class="total-row">
+            <td colspan="3" style="text-align:right;"><strong>TOPLAM:</strong></td>
+            <td colspan="2"><strong>{{ number_format($receipt->calculateTotalAmount(), 2, ',', '.') }} ₺</strong></td>
+        </tr>
+    @else
+        <tr class="total-row">
+            <td colspan="3" style="text-align:right;"><strong>TOPLAM:</strong></td>
+            <td colspan="2"><strong>{{ number_format($receipt->calculateTotalAmount(), 2, ',', '.') }} ₺</strong></td>
+        </tr>
+    @endif
     </tbody>
 </table>
 
 <div class="payment-info">
     @if($receipt->payment_method === 'cash')
-        <p><strong>Ödeme: 💵 NAKİT</strong></p>
+        <p><strong>Ödeme: 💵 NAKİT (Komisyon Yok)</strong></p>
     @elseif($receipt->payment_method === 'credit_card')
-        <p><strong>Ödeme: 💳 KREDİ KARTI</strong></p>
+        <p><strong>Ödeme: 💳 KREDİ KARTI (+%1 Komisyon)</strong></p>
     @else
-        <p><strong>Ödeme: 📝 VERESİYE</strong></p>
+        <p><strong>Ödeme: 📝 VERESİYE (Ödeme Sonra)</strong></p>
     @endif
 </div>
 

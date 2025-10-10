@@ -130,21 +130,27 @@
 
                     <div>
                         <label class="block font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                            💳 Ödeme Biçimi (Opsiyonel)
+                            💳 Ödeme Biçimi
                         </label>
                         <div class="space-y-2">
                             <label class="flex items-center">
-                                <input type="checkbox" name="payment_methods[]" value="cash" 
-                                       class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">💵 Nakit</span>
+                                <input type="radio" name="payment_methods[]" value="cash" 
+                                       class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">💵 Nakit (Komisyon Yok)</span>
                             </label>
                             <label class="flex items-center">
-                                <input type="checkbox" name="payment_methods[]" value="credit_card" 
-                                       class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">💳 Kredi Kartı</span>
+                                <input type="radio" name="payment_methods[]" value="credit_card" 
+                                       class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">💳 Kredi Kartı (+%1 Komisyon)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="payment_methods[]" value="" 
+                                       class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                       checked>
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">📝 Veresiye (Ödeme Sonra)</span>
                             </label>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">Hiçbiri seçilmezse veresiye olarak kaydedilir</p>
+                        <p class="text-xs text-gray-500 mt-1">Kredi kartı seçildiğinde toplam tutara %1 komisyon eklenir</p>
                     </div>
 
                     {{-- Dinamik Ürün Listesi --}}
@@ -270,7 +276,16 @@
                                     <div class="ml-3 flex-1 min-w-0">
                                         <p class="font-semibold text-gray-800 dark:text-white truncate">{{ $receipt->customer->name }}</p>
                                         <p class="text-sm text-gray-600 dark:text-gray-400">Fiş #{{ $receipt->id }}</p>
-                                        <p class="text-sm font-semibold text-primary-600">{{ number_format($receipt->total_amount, 2) }} ₺</p>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-sm font-semibold text-primary-600">{{ number_format($receipt->calculateTotalAmount(), 2) }} ₺</p>
+                                            @if($receipt->payment_method === 'credit_card')
+                                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">💳 +%1</span>
+                                            @elseif($receipt->payment_method === 'cash')
+                                                <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">💵 Nakit</span>
+                                            @else
+                                                <span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">📝 Veresiye</span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-2 flex-shrink-0">

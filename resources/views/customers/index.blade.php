@@ -63,6 +63,43 @@
             </div>
         </div>
 
+        {{-- Müşteri Arama --}}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="flex-1">
+                    <label for="customer-search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Müşteri Ara
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                               id="customer-search" 
+                               placeholder="Müşteri adı yazın..."
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-end">
+                    <button type="button" 
+                            id="clear-search"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors duration-200">
+                        Temizle
+                    </button>
+                </div>
+            </div>
+            
+            {{-- Arama Sonuçları --}}
+            <div id="search-results" class="mt-4 hidden">
+                <div class="border-t border-gray-200 dark:border-gray-600 pt-4">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Arama Sonuçları:</h4>
+                    <div id="search-results-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
         {{-- Müşteri Listesi --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -150,4 +187,89 @@
             @endif
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('customer-search');
+            const searchResults = document.getElementById('search-results');
+            const searchResultsList = document.getElementById('search-results-list');
+            const clearButton = document.getElementById('clear-search');
+            let searchTimeout;
+
+            // Arama fonksiyonu
+            function performSearch(query) {
+                if (query.length < 2) {
+                    searchResults.classList.add('hidden');
+                    return;
+                }
+
+                fetch(`{{ route('customers.search') }}?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(customers => {
+                        if (customers.length > 0) {
+                            displaySearchResults(customers);
+                        } else {
+                            searchResultsList.innerHTML = '<p class="text-gray-500 text-sm">Arama kriterlerine uygun müşteri bulunamadı.</p>';
+                            searchResults.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Arama hatası:', error);
+                        searchResultsList.innerHTML = '<p class="text-red-500 text-sm">Arama sırasında bir hata oluştu.</p>';
+                        searchResults.classList.remove('hidden');
+                    });
+            }
+
+            // Arama sonuçlarını göster
+            function displaySearchResults(customers) {
+                searchResultsList.innerHTML = customers.map(customer => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mr-3">
+                                <span class="text-primary-600 dark:text-primary-400 font-semibold text-sm">
+                                    ${customer.name.charAt(0).toUpperCase()}
+                                </span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-white">${customer.name}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">ID: ${customer.id}</p>
+                            </div>
+                        </div>
+                        <a href="/customers/${customer.id}/receipts" 
+                           class="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 px-3 py-1 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors duration-200 text-sm">
+                            Fişleri Gör
+                        </a>
+                    </div>
+                `).join('');
+                searchResults.classList.remove('hidden');
+            }
+
+            // Input event listener
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300); // 300ms debounce
+            });
+
+            // Clear button
+            clearButton.addEventListener('click', function() {
+                searchInput.value = '';
+                searchResults.classList.add('hidden');
+            });
+
+            // Enter key handling
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const query = this.value.trim();
+                    if (query.length >= 2) {
+                        performSearch(query);
+                    }
+                }
+            });
+        });
+    </script>
 </x-app-layout>

@@ -74,15 +74,31 @@ class ReceiptController extends Controller
             'payment_method' => $paymentMethod,
         ]);
 
-        foreach ($request->product_id as $index => $productId) {
+        // Dizileri normalize et (boşları ayıkla ve indexleri hizala)
+        $productIds = array_values(array_filter($request->product_id ?? []));
+        $prices     = array_values($request->price ?? []);
+        $quantities = array_values($request->quantity ?? []);
+        $notes      = array_values($request->note ?? []);
+
+        foreach ($productIds as $i => $productId) {
+            // price/quantity yoksa veya sayısal değilse bu satırı atla
+            if (!isset($prices[$i], $quantities[$i])) {
+                continue;
+            }
+            if (!is_numeric($prices[$i]) || !is_numeric($quantities[$i])) {
+                continue;
+            }
+
             ReceiptItem::create([
                 'receipt_id' => $receipt->id,
                 'product_id' => $productId,
-                'quantity' => $request->quantity[$index],
-                'price' => $request->price[$index],
-                'note' => isset($request->note[$index]) ? $request->note[$index] : null,
+                'quantity'   => (float) $quantities[$i],
+                'price'      => (float) $prices[$i],
+                'note'       => $notes[$i] ?? null,
             ]);
         }
+
+        // Artık total_amount accessor'ı otomatik komisyon hesaplıyor
 
         return redirect()->route('dashboard')->with('success', 'Fiş başarıyla oluşturuldu.');
     }
@@ -124,7 +140,7 @@ class ReceiptController extends Controller
         // Bugün oluşturulan ve arşivlenmemiş fişleri göster
         $today = now()->setTimezone('Europe/Istanbul')->startOfDay();
         
-        $receipts = Receipt::with('customer')
+        $receipts = Receipt::with(['customer', 'items'])
             ->whereDate('created_at', $today)
             ->where('daily_reset', false)
             ->latest()
@@ -176,6 +192,8 @@ class ReceiptController extends Controller
             }
         }
 
+        // Artık total_amount accessor'ı otomatik komisyon hesaplıyor
+
         // Eğer ödeme yöntemi değişti ve artık ödenmişse (nakit veya kart)
         if (($oldPaymentMethod === null || $oldPaymentMethod === '') && 
             in_array($request->payment_method, ['cash', 'credit_card'])) {
@@ -214,7 +232,7 @@ class ReceiptController extends Controller
     public function archived()
     {
         // 1. Günlük reset ile arşivlenmiş fişler
-        $dailyResetReceipts = Receipt::with('customer')
+        $dailyResetReceipts = Receipt::with(['customer', 'items'])
             ->where('daily_reset', true)
             ->whereNotNull('archived_at')
             ->get()
@@ -223,7 +241,7 @@ class ReceiptController extends Controller
             });
 
         // 2. Ödenmiş veresiye fişler (oluşturuldukları güne göre)
-        $paidCreditReceipts = Receipt::with('customer')
+        $paidCreditReceipts = Receipt::with(['customer', 'items'])
             ->whereIn('payment_method', ['cash', 'credit_card'])
             ->whereNotNull('archived_at')
             ->get()
@@ -255,7 +273,7 @@ class ReceiptController extends Controller
     {
         $selectedDate = \Carbon\Carbon::parse($date);
         
-        $receipts = Receipt::with('customer')
+        $receipts = Receipt::with(['customer', 'items'])
             ->where(function($query) use ($selectedDate) {
                 // Arşivlenmiş fişler (daily_reset = true)
                 $query->where('daily_reset', true)
@@ -326,4 +344,5 @@ class ReceiptController extends Controller
             ], 500);
         }
     }
+
 }
