@@ -78,7 +78,31 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                 <div class="bg-gray-50 p-3 rounded-lg">
                                     <p class="text-gray-600">Toplam Tutar</p>
-                                    <p class="font-semibold text-gray-900">{{ number_format(collect($receipts)->sum(function($receipt) { return $receipt->calculateTotalAmount(); }), 2) }} ₺</p>
+                                    <p class="font-semibold text-gray-900">
+                                        @php
+                                            $totalAmount = 0;
+                                            foreach ($receipts as $receipt) {
+                                                if (is_array($receipt)) {
+                                                    // Array ise basit hesaplama
+                                                    $subtotal = 0;
+                                                    if (isset($receipt['items'])) {
+                                                        foreach ($receipt['items'] as $item) {
+                                                            $subtotal += $item['quantity'] * $item['price'];
+                                                        }
+                                                    }
+                                                    // Kredi kartı komisyonu
+                                                    if (isset($receipt['payment_method']) && $receipt['payment_method'] === 'credit_card') {
+                                                        $subtotal += $subtotal * 0.01;
+                                                    }
+                                                    $totalAmount += $subtotal;
+                                                } else {
+                                                    // Object ise method'u kullan
+                                                    $totalAmount += $receipt->calculateTotalAmount();
+                                                }
+                                            }
+                                        @endphp
+                                        {{ number_format($totalAmount, 2) }} ₺
+                                    </p>
                                 </div>
                                 <div class="bg-gray-50 p-3 rounded-lg">
                                     <p class="text-gray-600">Müşteri Sayısı</p>
