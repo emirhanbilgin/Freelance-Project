@@ -88,7 +88,7 @@
                                     <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $item->quantity }}</td>
                                     <td class="px-4 py-3">
                                         @if(!$receipt->payment_method || $receipt->payment_method === '')
-                                            <form method="POST" action="{{ route('receipt-items.update', $item->id) }}" class="flex items-center space-x-2">
+                                            <form method="POST" action="{{ route('receipt_items.update', $item->id) }}" class="flex items-center space-x-2">
                                                 @csrf
                                                 @method('PUT')
                                                 <input type="number" step="0.01" name="price" value="{{ $item->price }}"
