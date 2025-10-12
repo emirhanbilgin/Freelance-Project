@@ -1,16 +1,38 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <h2 class="font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-200">
-                🏪 Hakan Gıda Sipariş
-            </h2>
-            <div class="flex items-center space-x-4">
-                <a href="{{ route('receipts.archived') }}" 
-                   class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-lg transition-colors duration-200">
-                    📁 Arşiv
-                </a>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ now()->setTimezone('Europe/Istanbul')->format('d.m.Y H:i') }}
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-200">
+                    🏪 Hakan Gıda Sipariş
+                </h2>
+                <div class="flex items-center space-x-4">
+                    <a href="{{ route('receipts.archived') }}" 
+                       class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-lg transition-colors duration-200">
+                        📁 Arşiv
+                    </a>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        {{ now()->setTimezone('Europe/Istanbul')->format('d.m.Y H:i') }}
+                    </div>
+                </div>
+            </div>
+            
+            {{-- Müşteri Arama --}}
+            <div class="max-w-md mx-auto">
+                <div class="relative">
+                    <input type="text" 
+                           id="header-customer-search" 
+                           placeholder="Müşteri ara..."
+                           class="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    
+                    {{-- Arama Sonuçları --}}
+                    <div id="header-search-results" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
+                        <!-- Suggestions will be populated here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -114,17 +136,9 @@
                         <label for="customer_name" class="block font-semibold mb-2 text-gray-700 dark:text-gray-300">
                             👤 Müşteri Adı
                         </label>
-                        <div class="relative">
-                            <input type="text" name="customer_name" id="customer_name" 
-                                   class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200" 
-                                   placeholder="Müşteri adını girin veya arayın..." 
-                                   autocomplete="off" required>
-                            
-                            {{-- Autocomplete dropdown --}}
-                            <div id="customer-suggestions" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
-                                <!-- Suggestions will be populated here -->
-                            </div>
-                        </div>
+                        <input type="text" name="customer_name" id="customer_name" 
+                               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200" 
+                               placeholder="Müşteri adını girin" required>
                     </div>
 
                     <div>
@@ -510,67 +524,75 @@
             updateBulkDeleteSection(); // Güncelle
         }
 
-        // Customer autocomplete functionality
-        let customerSearchTimeout;
-        const customerInput = document.getElementById('customer_name');
-        const suggestionsDiv = document.getElementById('customer-suggestions');
+        // Header customer search functionality
+        let headerSearchTimeout;
+        const headerSearchInput = document.getElementById('header-customer-search');
+        const headerSearchResults = document.getElementById('header-search-results');
 
-        customerInput.addEventListener('input', function() {
+        headerSearchInput.addEventListener('input', function() {
             const query = this.value.trim();
             
-            clearTimeout(customerSearchTimeout);
+            clearTimeout(headerSearchTimeout);
             
             if (query.length < 2) {
-                suggestionsDiv.classList.add('hidden');
+                headerSearchResults.classList.add('hidden');
                 return;
             }
 
-            customerSearchTimeout = setTimeout(() => {
+            headerSearchTimeout = setTimeout(() => {
                 fetch(`/customers/search?q=${encodeURIComponent(query)}`)
                     .then(response => response.json())
                     .then(customers => {
                         if (customers.length > 0) {
-                            displaySuggestions(customers);
+                            displayHeaderSuggestions(customers);
                         } else {
-                            suggestionsDiv.classList.add('hidden');
+                            headerSearchResults.classList.add('hidden');
                         }
                     })
                     .catch(error => {
                         console.error('Arama hatası:', error);
-                        suggestionsDiv.classList.add('hidden');
+                        headerSearchResults.classList.add('hidden');
                     });
             }, 300);
         });
 
-        function displaySuggestions(customers) {
-            suggestionsDiv.innerHTML = customers.map(customer => `
-                <div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0" 
-                     onclick="selectCustomer('${customer.name.replace(/'/g, "\\'")}')">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mr-3">
-                            <span class="text-primary-600 dark:text-primary-400 font-semibold text-sm">
-                                ${customer.name.charAt(0).toUpperCase()}
-                            </span>
+        function displayHeaderSuggestions(customers) {
+            headerSearchResults.innerHTML = customers.map(customer => `
+                <div class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0" 
+                     onclick="selectHeaderCustomer('${customer.name.replace(/'/g, "\\'")}', ${customer.id})">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mr-3">
+                                <span class="text-primary-600 dark:text-primary-400 font-semibold text-sm">
+                                    ${customer.name.charAt(0).toUpperCase()}
+                                </span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-white">${customer.name}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">ID: ${customer.id}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="font-medium text-gray-900 dark:text-white">${customer.name}</p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">ID: ${customer.id}</p>
+                        <div class="text-right">
+                            <a href="/customers/${customer.id}/receipts" 
+                               class="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 text-sm font-medium">
+                                Fişleri Gör →
+                            </a>
                         </div>
                     </div>
                 </div>
             `).join('');
-            suggestionsDiv.classList.remove('hidden');
+            headerSearchResults.classList.remove('hidden');
         }
 
-        function selectCustomer(customerName) {
-            customerInput.value = customerName;
-            suggestionsDiv.classList.add('hidden');
+        function selectHeaderCustomer(customerName, customerId) {
+            // Müşteri seçildiğinde direkt fişlerine yönlendir
+            window.location.href = `/customers/${customerId}/receipts`;
         }
 
         // Hide suggestions when clicking outside
         document.addEventListener('click', function(e) {
-            if (!customerInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-                suggestionsDiv.classList.add('hidden');
+            if (!headerSearchInput.contains(e.target) && !headerSearchResults.contains(e.target)) {
+                headerSearchResults.classList.add('hidden');
             }
         });
 
