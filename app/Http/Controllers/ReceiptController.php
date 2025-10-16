@@ -144,14 +144,22 @@ class ReceiptController extends Controller
 
         $receipts = Receipt::with(['customer', 'items'])
             ->where(function ($q) use ($istanbulDate, $startUtc) {
-                // Esas filtre: Istanbul takvim gününe göre
                 $q->whereDate('created_at', $istanbulDate)
-                  // Güvenlik ağı: Saat dilimi kaymalarına rağmen son 24 saatteki kayıtlar da gösterilsin
                   ->orWhere('created_at', '>=', $startUtc);
             })
             ->where('daily_reset', false)
             ->latest()
             ->get();
+
+        // Eğer yine boş ise (olası timezone farkları veya barındırıcı saat farkı)
+        if ($receipts->isEmpty()) {
+            $fallbackStart = now()->subHours(36); // son 36 saat
+            $receipts = Receipt::with(['customer', 'items'])
+                ->where('created_at', '>=', $fallbackStart)
+                ->where('daily_reset', false)
+                ->latest()
+                ->get();
+        }
             
         $products = Product::all();
 
