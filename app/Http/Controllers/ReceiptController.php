@@ -140,9 +140,15 @@ class ReceiptController extends Controller
         // Bugün oluşturulan ve arşivlenmemiş fişleri göster
         // Basit ve güvenilir: Istanbul gününün tarih kısmını kullan
         $istanbulDate = now('Europe/Istanbul')->toDateString();
+        $startUtc = now('Europe/Istanbul')->startOfDay()->setTimezone('UTC');
 
         $receipts = Receipt::with(['customer', 'items'])
-            ->whereDate('created_at', $istanbulDate)
+            ->where(function ($q) use ($istanbulDate, $startUtc) {
+                // Esas filtre: Istanbul takvim gününe göre
+                $q->whereDate('created_at', $istanbulDate)
+                  // Güvenlik ağı: Saat dilimi kaymalarına rağmen son 24 saatteki kayıtlar da gösterilsin
+                  ->orWhere('created_at', '>=', $startUtc);
+            })
             ->where('daily_reset', false)
             ->latest()
             ->get();
