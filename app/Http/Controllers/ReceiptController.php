@@ -138,14 +138,11 @@ class ReceiptController extends Controller
     public function index()
     {
         // Bugün oluşturulan ve arşivlenmemiş fişleri göster
-        // Depoda timestamp'ler UTC ise, Istanbul gün aralığını UTC'ye çevirerek filtreleyelim
-        $startIstanbul = now('Europe/Istanbul')->startOfDay();
-        $endIstanbul   = now('Europe/Istanbul')->endOfDay();
-        $startUtc = $startIstanbul->clone()->setTimezone('UTC');
-        $endUtc   = $endIstanbul->clone()->setTimezone('UTC');
+        // Basit ve güvenilir: Istanbul gününün tarih kısmını kullan
+        $istanbulDate = now('Europe/Istanbul')->toDateString();
 
         $receipts = Receipt::with(['customer', 'items'])
-            ->whereBetween('created_at', [$startUtc, $endUtc])
+            ->whereDate('created_at', $istanbulDate)
             ->where('daily_reset', false)
             ->latest()
             ->get();
