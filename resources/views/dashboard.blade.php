@@ -189,14 +189,14 @@
                                     <select name="product_id[]" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm" required></select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fiyat (₺)</label>
-                                    <input type="number" name="price[]" placeholder="0.00" step="0.01" 
-                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm" required>
-                                </div>
-                                <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">kg</label>
                                     <input type="number" name="quantity[]" placeholder="1" min="0.1" step="0.1" 
                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fiyat (₺)</label>
+                                    <input type="number" name="price[]" placeholder="0.00" step="0.01" 
+                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm" required>
                                 </div>
                                 <div class="flex items-end">
                                     <button type="button" onclick="addProductRow()" 
@@ -340,14 +340,14 @@
                     <select name="product_id[]" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm" required></select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fiyat (₺)</label>
-                    <input type="number" name="price[]" placeholder="0.00" step="0.01" 
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm" required>
-                </div>
-                <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">kg</label>
                     <input type="number" name="quantity[]" placeholder="1" min="0.1" step="0.1" 
                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fiyat (₺)</label>
+                    <input type="number" name="price[]" placeholder="0.00" step="0.01" 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm" required>
                 </div>
                 <div class="flex items-end">
                     <button type="button" onclick="this.closest('.bg-gray-50').remove()" 
