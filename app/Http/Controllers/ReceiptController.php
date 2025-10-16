@@ -137,16 +137,15 @@ class ReceiptController extends Controller
     // Dashboard (fiş ve ürünleri listele)
     public function index()
     {
-        // Bugün oluşturulan ve arşivlenmemiş fişleri göster (TZ: Europe/Istanbul)
-        $istanbulNow = now()->setTimezone('Europe/Istanbul');
-        $startOfToday = $istanbulNow->copy()->startOfDay();
-        $endOfToday = $istanbulNow->copy()->endOfDay();
+        // Bugün oluşturulan ve arşivlenmemiş fişleri göster
+        // Depoda timestamp'ler UTC ise, Istanbul gün aralığını UTC'ye çevirerek filtreleyelim
+        $startIstanbul = now('Europe/Istanbul')->startOfDay();
+        $endIstanbul   = now('Europe/Istanbul')->endOfDay();
+        $startUtc = $startIstanbul->clone()->setTimezone('UTC');
+        $endUtc   = $endIstanbul->clone()->setTimezone('UTC');
 
         $receipts = Receipt::with(['customer', 'items'])
-            ->whereBetween('created_at', [
-                $startOfToday->setTimezone(config('app.timezone')),
-                $endOfToday->setTimezone(config('app.timezone'))
-            ])
+            ->whereBetween('created_at', [$startUtc, $endUtc])
             ->where('daily_reset', false)
             ->latest()
             ->get();
