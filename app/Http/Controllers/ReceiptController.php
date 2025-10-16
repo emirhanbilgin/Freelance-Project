@@ -48,7 +48,7 @@ class ReceiptController extends Controller
             'price' => 'required|array',
             'price.*' => 'numeric|min:0',
             'quantity' => 'required|array',
-            'quantity.*' => 'integer|min:1',
+            'quantity.*' => 'numeric|min:0.1',
             'note' => 'nullable|array',
             'note.*' => 'nullable|string|max:1000',
             'description' => 'nullable|string|max:1000',
@@ -149,7 +149,10 @@ class ReceiptController extends Controller
             
         $products = Product::all();
 
-        return view('dashboard', compact('receipts', 'products'));
+        return view('dashboard', [
+            'receipts' => $receipts,
+            'products' => $products,
+        ]);
     }
 
     public function updateBatch(Request $request, $receiptId)
