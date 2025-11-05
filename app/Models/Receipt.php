@@ -85,4 +85,10 @@ class Receipt extends Model
     {
         return $this->hasMany(\App\Models\ReceiptItem::class);
     }
+
+    // User ilişkisi ekle (eğer user_id varsa)
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
+    }
 }

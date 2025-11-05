@@ -18,4 +18,10 @@ class ReceiptItem extends Model
     {
         return $this->belongsTo(\App\Models\Receipt::class);
     }
+
+    // Product ilişkisinin güvenli kontrolü
+    public function getProductNameAttribute()
+    {
+        return $this->product ? $this->product->name : 'Ürün Bulunamadı';
+    }
 }

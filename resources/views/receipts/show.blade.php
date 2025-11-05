@@ -5,12 +5,22 @@
                 📄 Fiş #{{ $receipt->id }}
             </h2>
             <div class="flex items-center space-x-2">
-                @if($receipt->payment_method === 'cash')
+                @if(empty($receipt->payment_method))
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full font-medium">📝 Veresiye</span>
+                    <form method="POST" action="{{ route('receipts.update-payment-method', $receipt->id) }}" class="ml-3 flex items-center space-x-2">
+                        @csrf
+                        @method('PUT')
+                        <select name="payment_method" class="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-600 dark:text-white text-sm">
+                            <option value="">Ödeme Yöntemi</option>
+                            <option value="cash">💵 Nakit</option>
+                            <option value="credit_card">💳 Kredi Kartı</option>
+                        </select>
+                        <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm">Öde</button>
+                    </form>
+                @elseif($receipt->payment_method === 'cash')
                     <span class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">💵 Nakit</span>
                 @elseif($receipt->payment_method === 'credit_card')
                     <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">💳 Kredi Kartı</span>
-                @else
-                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full font-medium">📝 Veresiye</span>
                 @endif
                 <a href="{{ route('receipts.pdf', $receipt->id) }}" 
                    class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center space-x-2">
@@ -32,7 +42,7 @@
                     <div>
                         <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">👤 Müşteri Bilgileri</h3>
                         <p class="text-gray-600 dark:text-gray-400">
-                            <span class="font-semibold">{{ $receipt->customer->name }}</span>
+                            <span class="font-semibold">{{ $receipt->customer ? $receipt->customer->name : 'Müşteri Bulunamadı' }}</span>
                         </p>
                     </div>
                     <div>
@@ -78,7 +88,9 @@
                                                 </svg>
                                             </div>
                                             <div>
-                                                <p class="font-medium text-gray-800 dark:text-white">{{ $item->product->name }}</p>
+                                                <p class="font-medium text-gray-800 dark:text-white">
+                                                    {{ $item->product ? $item->product->name : 'Ürün Bulunamadı' }}
+                                                </p>
                                                 @if($item->note)
                                                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ $item->note }}</p>
                                                 @endif

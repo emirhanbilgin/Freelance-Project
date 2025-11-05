@@ -1,9 +1,28 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-200">
-                🏪 Hakan Gıda Sipariş
-            </h2>
+            <div class="flex items-center space-x-8">
+                <h2 class="font-bold text-xl sm:text-2xl text-gray-800 dark:text-gray-200">
+                    Hakan Gıda Sipariş
+                </h2>
+                
+                {{-- Kompakt Müşteri Arama --}}
+                <div class="relative">
+                    <input type="text" 
+                           id="header-customer-search" 
+                           placeholder="Müşteri ara..."
+                           class="w-72 px-4 py-2 pl-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-lg">🏪</span>
+                    </div>
+                    
+                    {{-- Arama Sonuçları --}}
+                    <div id="header-search-results" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
+                        <!-- Suggestions will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
             <div class="flex items-center space-x-4">
                 <a href="{{ route('receipts.archived') }}" 
                    class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-lg transition-colors duration-200">
@@ -22,33 +41,6 @@
         <script>
             const products = {!! isset($products) ? json_encode($products) : '[]' !!};
         </script>
-
-        {{-- Müşteri Arama --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4">
-            <div class="flex flex-col sm:flex-row gap-4 items-center">
-                <div class="flex-1 w-full sm:max-w-md">
-                    <div class="relative">
-                        <input type="text" 
-                               id="header-customer-search" 
-                               placeholder="Müşteri ara..."
-                               class="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                        </div>
-                        
-                        {{-- Arama Sonuçları --}}
-                        <div id="header-search-results" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
-                            <!-- Suggestions will be populated here -->
-                        </div>
-                    </div>
-                </div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">
-                    Müşteri adı yazın, fişlerine direkt erişin
-                </div>
-            </div>
-        </div>
 
         {{-- İstatistikler --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -285,7 +277,7 @@
                     </div>
                 @else
                     <div class="space-y-3 max-h-96 overflow-y-auto p-1">
-                        @foreach ($receipts->take(10) as $receipt)
+                        @foreach ($receipts as $receipt)
                             <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200 min-h-[60px]">
                                 <div class="flex items-center flex-1 min-w-0">
                                     <!-- Checkbox -->
@@ -412,27 +404,83 @@
                 .then(response => response.json())
                 .then(data => {
                     const content = document.getElementById('dailyReportContent');
-                    if (data.length === 0) {
+                    
+                    if (!data.products || data.products.length === 0) {
                         content.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-8">Bugün henüz satış yapılmamış.</p>';
                     } else {
-                        let html = '<div class="space-y-3">';
-                        data.forEach(item => {
+                        let html = '';
+                        
+                        // Genel toplamlar
+                        if (data.totals) {
                             html += `
-                                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mr-3">
-                                            <svg class="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                            </svg>
+                                <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-xl mb-6">
+                                    <h4 class="text-lg font-bold mb-3">📊 Günlük Toplamlar</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+                                            <div class="text-sm opacity-90">💵 Nakit</div>
+                                            <div class="text-xl font-bold">${parseFloat(data.totals.cash_amount || 0).toFixed(2)} ₺</div>
+                                            <div class="text-sm opacity-90">${parseFloat(data.totals.cash_quantity || 0).toFixed(1)} kg</div>
                                         </div>
-                                        <div>
-                                            <p class="font-semibold text-gray-800 dark:text-white">${item.product_name}</p>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">${item.total_quantity} kg</p>
+                                        <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+                                            <div class="text-sm opacity-90">💳 Kredi Kartı</div>
+                                            <div class="text-xl font-bold">${parseFloat(data.totals.credit_card_amount || 0).toFixed(2)} ₺</div>
+                                            <div class="text-sm opacity-90">${parseFloat(data.totals.credit_card_quantity || 0).toFixed(1)} kg</div>
+                                        </div>
+                                        <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+                                            <div class="text-sm opacity-90">📝 Veresiye</div>
+                                            <div class="text-xl font-bold">${parseFloat(data.totals.credit_amount || 0).toFixed(2)} ₺</div>
+                                            <div class="text-sm opacity-90">${parseFloat(data.totals.credit_quantity || 0).toFixed(1)} kg</div>
                                         </div>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="font-bold text-primary-600">${item.total_amount} ₺</p>
-                                        <p class="text-sm text-gray-500">${item.receipt_count} fiş</p>
+                                    <div class="mt-3 pt-3 border-t border-white border-opacity-30">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-lg font-semibold">Genel Toplam:</span>
+                                            <span class="text-2xl font-bold">${parseFloat(data.totals.total_amount || 0).toFixed(2)} ₺</span>
+                                        </div>
+                                        <div class="text-sm opacity-90 text-center">${parseFloat(data.totals.total_quantity || 0).toFixed(1)} kg</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        // Ürün detayları
+                        html += '<div class="space-y-3"><h4 class="text-lg font-bold text-gray-800 dark:text-white">📦 Ürün Detayları</h4>';
+                        data.products.forEach(item => {
+                            html += `
+                                <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center">
+                                            <div class="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mr-3">
+                                                <svg class="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p class="font-semibold text-gray-800 dark:text-white">${item.product_name}</p>
+                                                <p class="text-sm text-gray-600 dark:text-gray-400">${item.receipt_count} fiş</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-bold text-primary-600">${parseFloat(item.total_amount).toFixed(2)} ₺</p>
+                                            <p class="text-sm text-gray-500">${parseFloat(item.total_quantity).toFixed(1)} kg</p>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2 text-xs">
+                                        <div class="bg-green-100 text-green-800 p-2 rounded text-center">
+                                            <div class="font-semibold">💵 Nakit</div>
+                                            <div>${parseFloat(item.cash_amount || 0).toFixed(2)} ₺</div>
+                                            <div>${parseFloat(item.cash_quantity || 0).toFixed(1)} kg</div>
+                                        </div>
+                                        <div class="bg-blue-100 text-blue-800 p-2 rounded text-center">
+                                            <div class="font-semibold">💳 Kart</div>
+                                            <div>${parseFloat(item.credit_card_amount || 0).toFixed(2)} ₺</div>
+                                            <div>${parseFloat(item.credit_card_quantity || 0).toFixed(1)} kg</div>
+                                        </div>
+                                        <div class="bg-gray-100 text-gray-800 p-2 rounded text-center">
+                                            <div class="font-semibold">📝 Veresiye</div>
+                                            <div>${parseFloat(item.credit_amount || 0).toFixed(2)} ₺</div>
+                                            <div>${parseFloat(item.credit_quantity || 0).toFixed(1)} kg</div>
+                                        </div>
                                     </div>
                                 </div>
                             `;

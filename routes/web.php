@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/receipts/create', [ReceiptController::class, 'create'])->name('receipts.create');
     Route::post('/receipts', [ReceiptController::class, 'store'])->name('receipts.store');
     Route::get('/receipts/{id}', [ReceiptController::class, 'show'])->name('receipts.show');
+    Route::put('/receipts/{id}/payment-method', [ReceiptController::class, 'updatePaymentMethod'])->name('receipts.update-payment-method');
     Route::get('/receipts/{id}/edit', [ReceiptController::class, 'edit'])->name('receipts.edit');
 
     Route::post('/receipts/bulk-delete', [ReceiptController::class, 'bulkDelete'])->name('receipts.bulk-delete');

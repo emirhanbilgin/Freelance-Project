@@ -29,12 +29,14 @@ class DailyReceiptReset extends Command
     {
         $this->info('Günlük fiş sıfırlama başlatılıyor...');
         
-        // Bugün oluşturulan fişleri bul
-        $today = Carbon::now()->setTimezone('Europe/Istanbul')->startOfDay();
-        $resetTime = Carbon::now()->setTimezone('Europe/Istanbul')->setTime(17, 0, 0); // Akşam 5
-        
+        // Bugünün İstanbul zamanına göre UTC aralığını hesapla
+        $istanbulNow = Carbon::now('Europe/Istanbul');
+        $startUtc = $istanbulNow->copy()->startOfDay()->setTimezone('UTC');
+        $endUtc = $istanbulNow->copy()->setTimezone('UTC');
+        $resetTime = $istanbulNow->copy()->setTime(17, 0, 0); // Akşam 5 (IST)
+
         $openReceipts = Receipt::where('daily_reset', false)
-            ->whereDate('created_at', $today)
+            ->whereBetween('created_at', [$startUtc, $endUtc])
             ->get();
         
         $archivedCount = 0;

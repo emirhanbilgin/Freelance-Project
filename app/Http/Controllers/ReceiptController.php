@@ -53,7 +53,7 @@ class ReceiptController extends Controller
             'note.*' => 'nullable|string|max:1000',
             'description' => 'nullable|string|max:1000',
             'payment_methods' => 'nullable|array',
-            'payment_methods.*' => 'in:cash,credit_card',
+            'payment_methods.*' => 'nullable|in:cash,credit_card,',
         ]);
 
         $customer = Customer::firstOrCreate([
@@ -115,10 +115,29 @@ class ReceiptController extends Controller
     // Tekil fişi göster
     public function show($id)
     {
-        $receipt = Receipt::with(['customer', 'items.product'])->findOrFail($id);
-        $products = Product::all();
+        try {
+            // Eager loading ile ilişkileri yükle ve hata kontrolü ekle
+            $receipt = Receipt::with(['customer', 'items.product'])
+                ->findOrFail($id);
+            
+            // Receipt items'ların product ilişkilerini kontrol et
+            foreach ($receipt->items as $item) {
+                if (!$item->product) {
+                    \Log::warning("ReceiptItem {$item->id} has no product relationship for receipt {$id}");
+                }
+            }
+            
+            $products = Product::all();
 
-        return view('receipts.show', compact('receipt', 'products'));
+            return view('receipts.show', compact('receipt', 'products'));
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::error("Receipt not found: {$id}");
+            abort(404, 'Fiş bulunamadı.');
+        } catch (\Exception $e) {
+            \Log::error("Error showing receipt {$id}: " . $e->getMessage());
+            abort(500, 'Fiş detayları yüklenirken hata oluştu.');
+        }
     }
 
     // ✅ Fişi PDF'e dönüştür ve indir
@@ -137,29 +156,14 @@ class ReceiptController extends Controller
     // Dashboard (fiş ve ürünleri listele)
     public function index()
     {
-        // Bugün oluşturulan ve arşivlenmemiş fişleri göster
-        // Basit ve güvenilir: Istanbul gününün tarih kısmını kullan
-        $istanbulDate = now('Europe/Istanbul')->toDateString();
-        $startUtc = now('Europe/Istanbul')->startOfDay()->setTimezone('UTC');
+        // İstanbul gününe göre: gün başlangıcını IST'de hesapla, UTC'ye çevir ve "şu an"a kadar getir
+        $istanbulNow = now('Europe/Istanbul');
 
-        $receipts = Receipt::with(['customer', 'items'])
-            ->where(function ($q) use ($istanbulDate, $startUtc) {
-                $q->whereDate('created_at', $istanbulDate)
-                  ->orWhere('created_at', '>=', $startUtc);
-            })
+        // Veresiye fişler dahil: daily_reset=false olan tüm fişleri göster
+        $receipts = Receipt::with('customer')
             ->where('daily_reset', false)
             ->latest()
             ->get();
-
-        // Eğer yine boş ise (olası timezone farkları veya barındırıcı saat farkı)
-        if ($receipts->isEmpty()) {
-            $fallbackStart = now()->subHours(36); // son 36 saat
-            $receipts = Receipt::with(['customer', 'items'])
-                ->where('created_at', '>=', $fallbackStart)
-                ->where('daily_reset', false)
-                ->latest()
-                ->get();
-        }
             
         $products = Product::all();
 
@@ -230,6 +234,7 @@ class ReceiptController extends Controller
     {
         $today = now()->setTimezone('Europe/Istanbul')->startOfDay();
         
+        // Ürün bazında detaylı satış raporu
         $dailySales = ReceiptItem::join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
             ->join('products', 'receipt_items.product_id', '=', 'products.id')
             ->whereDate('receipts.created_at', $today)
@@ -237,20 +242,44 @@ class ReceiptController extends Controller
                 'products.name as product_name',
                 \DB::raw('SUM(receipt_items.quantity) as total_quantity'),
                 \DB::raw('SUM(receipt_items.quantity * receipt_items.price) as total_amount'),
-                \DB::raw('COUNT(DISTINCT receipts.id) as receipt_count')
+                \DB::raw('COUNT(DISTINCT receipts.id) as receipt_count'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "cash" THEN receipt_items.quantity ELSE 0 END) as cash_quantity'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "cash" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as cash_amount'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "credit_card" THEN receipt_items.quantity ELSE 0 END) as credit_card_quantity'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "credit_card" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as credit_card_amount'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method IS NULL OR receipts.payment_method = "" THEN receipt_items.quantity ELSE 0 END) as credit_quantity'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method IS NULL OR receipts.payment_method = "" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as credit_amount')
             )
             ->groupBy('products.id', 'products.name')
             ->orderBy('total_amount', 'desc')
             ->get();
 
-        return response()->json($dailySales);
+        // Genel toplamlar
+        $totals = ReceiptItem::join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
+            ->whereDate('receipts.created_at', $today)
+            ->select(
+                \DB::raw('SUM(receipt_items.quantity) as total_quantity'),
+                \DB::raw('SUM(receipt_items.quantity * receipt_items.price) as total_amount'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "cash" THEN receipt_items.quantity ELSE 0 END) as cash_quantity'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "cash" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as cash_amount'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "credit_card" THEN receipt_items.quantity ELSE 0 END) as credit_card_quantity'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method = "credit_card" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as credit_card_amount'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method IS NULL OR receipts.payment_method = "" THEN receipt_items.quantity ELSE 0 END) as credit_quantity'),
+                \DB::raw('SUM(CASE WHEN receipts.payment_method IS NULL OR receipts.payment_method = "" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as credit_amount')
+            )
+            ->first();
+
+        return response()->json([
+            'products' => $dailySales,
+            'totals' => $totals
+        ]);
     }
 
     // Arşivlenmiş fişleri listele
     public function archived()
     {
         // 1. Günlük reset ile arşivlenmiş fişler
-        $dailyResetReceipts = Receipt::with(['customer', 'items'])
+        $dailyResetReceipts = Receipt::with(['customer', 'items.product'])
             ->where('daily_reset', true)
             ->whereNotNull('archived_at')
             ->get()
@@ -259,7 +288,7 @@ class ReceiptController extends Controller
             });
 
         // 2. Ödenmiş veresiye fişler (oluşturuldukları güne göre)
-        $paidCreditReceipts = Receipt::with(['customer', 'items'])
+        $paidCreditReceipts = Receipt::with(['customer', 'items.product'])
             ->whereIn('payment_method', ['cash', 'credit_card'])
             ->whereNotNull('archived_at')
             ->get()
@@ -291,7 +320,7 @@ class ReceiptController extends Controller
     {
         $selectedDate = \Carbon\Carbon::parse($date);
         
-        $receipts = Receipt::with(['customer', 'items'])
+        $receipts = Receipt::with(['customer', 'items.product'])
             ->where(function($query) use ($selectedDate) {
                 // Arşivlenmiş fişler (daily_reset = true)
                 $query->where('daily_reset', true)
@@ -313,7 +342,7 @@ class ReceiptController extends Controller
     // Veresiye fişlerini listele
     public function creditReceipts()
     {
-        $creditReceipts = Receipt::with(['customer', 'items'])
+        $creditReceipts = Receipt::with(['customer', 'items.product'])
             ->where(function($query) {
                 $query->whereNull('payment_method')
                       ->orWhere('payment_method', '');
@@ -335,10 +364,8 @@ class ReceiptController extends Controller
         try {
             $receiptIds = $request->receipt_ids;
             
-            // Sadece bugünkü ve arşivlenmemiş fişleri sil
-            $today = now()->setTimezone('Europe/Istanbul')->startOfDay();
+            // Arşivlenmemiş tüm fişleri sil (tarihten bağımsız)
             $receipts = Receipt::whereIn('id', $receiptIds)
-                ->whereDate('created_at', $today)
                 ->where('daily_reset', false)
                 ->get();
 
@@ -361,6 +388,32 @@ class ReceiptController extends Controller
                 'message' => 'Fişler silinirken hata oluştu: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    // Veresiye fişin ödeme yöntemini güncelle (nakit / kredi kartı) ve arşive taşı
+    public function updatePaymentMethod(Request $request, $id)
+    {
+        $request->validate([
+            'payment_method' => 'required|in:cash,credit_card',
+        ]);
+
+        $receipt = Receipt::findOrFail($id);
+        $oldPaymentMethod = $receipt->payment_method;
+
+        // Ödeme yöntemi güncelleniyor
+        $receipt->payment_method = $request->payment_method;
+
+        // İlk kez ödeniyorsa arşiv zamanını işaretle
+        if (($oldPaymentMethod === null || $oldPaymentMethod === '') && !$receipt->archived_at) {
+            $receipt->archived_at = now();
+        }
+
+        $receipt->save();
+
+        // Oluşturulduğu günün arşivine dön
+        $receiptDate = $receipt->created_at->format('Y-m-d');
+        return redirect()->route('receipts.archived.by-date', $receiptDate)
+            ->with('success', 'Ödeme yöntemi güncellendi ve fiş arşive taşındı.');
     }
 
 }

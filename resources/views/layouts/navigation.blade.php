@@ -6,8 +6,10 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center space-x-2">
-                        <img src="{{ asset('logo.png') }}" alt="Hakan Gıda" class="w-10 h-10 object-contain">
-                        <span class="font-bold text-xl text-gray-800 dark:text-white hidden sm:block">Hakan Gıda</span>
+                        <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-lg">H</span>
+                        </div>
+                        <span class="font-bold text-xl text-gray-800 dark:text-white">Hakan Gıda</span>
                     </a>
                 </div>
 
