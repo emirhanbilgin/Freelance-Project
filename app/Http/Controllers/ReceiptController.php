@@ -233,26 +233,63 @@ class ReceiptController extends Controller
     public function dailySalesReport()
     {
         $today = now()->setTimezone('Europe/Istanbul')->startOfDay();
+        $todayEnd = $today->copy()->endOfDay();
         
-        // Ürün bazında detaylı satış raporu
-        $dailySales = ReceiptItem::join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
-            ->join('products', 'receipt_items.product_id', '=', 'products.id')
-            ->whereDate('receipts.created_at', $today)
-            ->select(
-                'products.name as product_name',
-                \DB::raw('SUM(receipt_items.quantity) as total_quantity'),
-                \DB::raw('SUM(receipt_items.quantity * receipt_items.price) as total_amount'),
-                \DB::raw('COUNT(DISTINCT receipts.id) as receipt_count'),
-                \DB::raw('SUM(CASE WHEN receipts.payment_method = "cash" THEN receipt_items.quantity ELSE 0 END) as cash_quantity'),
-                \DB::raw('SUM(CASE WHEN receipts.payment_method = "cash" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as cash_amount'),
-                \DB::raw('SUM(CASE WHEN receipts.payment_method = "credit_card" THEN receipt_items.quantity ELSE 0 END) as credit_card_quantity'),
-                \DB::raw('SUM(CASE WHEN receipts.payment_method = "credit_card" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as credit_card_amount'),
-                \DB::raw('SUM(CASE WHEN receipts.payment_method IS NULL OR receipts.payment_method = "" THEN receipt_items.quantity ELSE 0 END) as credit_quantity'),
-                \DB::raw('SUM(CASE WHEN receipts.payment_method IS NULL OR receipts.payment_method = "" THEN receipt_items.quantity * receipt_items.price ELSE 0 END) as credit_amount')
-            )
-            ->groupBy('products.id', 'products.name')
-            ->orderBy('total_amount', 'desc')
+        // ReceiptItem'ları product ilişkisi ile birlikte yükle
+        $receiptItems = ReceiptItem::with(['product', 'receipt'])
+            ->whereHas('receipt', function($query) use ($today, $todayEnd) {
+                $query->whereDate('created_at', $today);
+            })
             ->get();
+        
+        // Ürün bazında grupla
+        $grouped = $receiptItems->groupBy(function($item) {
+            // Eğer product yoksa veya product_id null ise, "Ürün Bulunamadı" olarak grupla
+            return $item->product ? $item->product->id : 'missing_' . $item->product_id;
+        });
+        
+        $dailySales = $grouped->map(function($items, $productId) {
+            $firstItem = $items->first();
+            $product = $firstItem->product;
+            $productName = $product ? $product->name : 'Ürün Bulunamadı';
+            
+            $totalQuantity = $items->sum('quantity');
+            $totalAmount = $items->sum(function($item) {
+                return $item->quantity * $item->price;
+            });
+            $receiptCount = $items->pluck('receipt_id')->unique()->count();
+            
+            // Ödeme yöntemine göre grupla
+            $cashItems = $items->filter(function($item) {
+                return $item->receipt && $item->receipt->payment_method === 'cash';
+            });
+            $cardItems = $items->filter(function($item) {
+                return $item->receipt && $item->receipt->payment_method === 'credit_card';
+            });
+            $creditItems = $items->filter(function($item) {
+                return !$item->receipt || (!$item->receipt->payment_method || $item->receipt->payment_method === '');
+            });
+            
+            return [
+                'product_name' => $productName,
+                'product_id' => $product ? $product->id : null,
+                'total_quantity' => $totalQuantity,
+                'total_amount' => $totalAmount,
+                'receipt_count' => $receiptCount,
+                'cash_quantity' => $cashItems->sum('quantity'),
+                'cash_amount' => $cashItems->sum(function($item) {
+                    return $item->quantity * $item->price;
+                }),
+                'credit_card_quantity' => $cardItems->sum('quantity'),
+                'credit_card_amount' => $cardItems->sum(function($item) {
+                    return $item->quantity * $item->price;
+                }),
+                'credit_quantity' => $creditItems->sum('quantity'),
+                'credit_amount' => $creditItems->sum(function($item) {
+                    return $item->quantity * $item->price;
+                }),
+            ];
+        })->values()->sortByDesc('total_amount');
 
         // Genel toplamlar
         $totals = ReceiptItem::join('receipts', 'receipt_items.receipt_id', '=', 'receipts.id')
